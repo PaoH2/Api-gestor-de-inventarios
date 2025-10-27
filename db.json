@@ -1,0 +1,56 @@
+{
+  "productos": [
+    {
+      "ID_Producto": 1,
+      "SKU": "SKU-001",
+      "Nombre_Producto": "Galletas Chocochips",
+      "Descripcion": "",
+      "Costo": 18.5,
+      "Stock_Actual": 0
+    },
+    {
+      "ID_Producto": 2,
+      "SKU": "SKU-COO6",
+      "Nombre_Producto": "CocaCola 600",
+      "Descripcion": "",
+      "Costo": 20,
+      "Stock_Actual": 0
+    },
+    {
+      "ID_Producto": 3,
+      "SKU": "SKU-JAMFUT",
+      "Nombre_Producto": "Jamon fut",
+      "Descripcion": "Lorem ipsum dolor sit amet, consectetur adipiscing...",
+      "Costo": 50,
+      "Stock_Actual": 0
+    },
+    {
+      "ID_Producto": 4,
+      "SKU": "SKU-CHOCO4",
+      "Nombre_Producto": "Galletas Chokis paq. 4",
+      "Descripcion": "Lorem ipsum dolor sit amet consectetur adipiscing elit. ",
+      "Costo": 10.5,
+      "Stock_Actual": 0
+    }
+  ],
+  "usuarios": [
+    {
+      "id": 1,
+      "email": "admin@inventario.com",
+      "password": "$2b$10$dHja5j1ZqHeB95YgMaz5o.Z1NYUdcJ/U9.hIlkaex8DZtnqfF5jPm",
+      "role": "Superadmin"
+    },
+    {
+      "id": 2,
+      "email": "primer@operador.com",
+      "password": "$2b$10$le8Np0tao87hXg00Q32hhOW3CfOSxrokaRd.12TtSAzWYWfd5fSta",
+      "role": "Operador"
+    },
+    {
+      "id": 3,
+      "email": "segundo@operador.com",
+      "password": "$2b$10$JosXcE5SimsKw2U/vnR3yu3dKeyBj1RhrUBEbECIfJe5NH9TXO8Dm",
+      "role": "Operador"
+    }
+  ]
+}
