@@ -6,7 +6,7 @@
       "Nombre_Producto": "Galletas Chocochips",
       "Descripcion": "",
       "Costo": 18.5,
-      "Stock_Actual": 0
+      "Stock_Actual": 47
     },
     {
       "ID_Producto": 2,
@@ -14,7 +14,7 @@
       "Nombre_Producto": "CocaCola 600",
       "Descripcion": "",
       "Costo": 20,
-      "Stock_Actual": 0
+      "Stock_Actual": 26
     },
     {
       "ID_Producto": 3,
@@ -22,7 +22,7 @@
       "Nombre_Producto": "Jamon fut",
       "Descripcion": "Lorem ipsum dolor sit amet, consectetur adipiscing...",
       "Costo": 50,
-      "Stock_Actual": 0
+      "Stock_Actual": 16
     },
     {
       "ID_Producto": 4,
@@ -30,7 +30,15 @@
       "Nombre_Producto": "Galletas Chokis paq. 4",
       "Descripcion": "Lorem ipsum dolor sit amet consectetur adipiscing elit. ",
       "Costo": 10.5,
-      "Stock_Actual": 0
+      "Stock_Actual": 8
+    },
+    {
+      "ID_Producto": 5,
+      "SKU": "SKU-PANBIN",
+      "Nombre_Producto": "Pan Bimbo integral ",
+      "Descripcion": "Lorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae pellentesque sem placerat. ",
+      "Costo": 45,
+      "Stock_Actual": 15
     }
   ],
   "usuarios": [
@@ -51,6 +59,88 @@
       "email": "segundo@operador.com",
       "password": "$2b$10$JosXcE5SimsKw2U/vnR3yu3dKeyBj1RhrUBEbECIfJe5NH9TXO8Dm",
       "role": "Operador"
+    }
+  ],
+  "movimientos": [
+    {
+      "id": 1,
+      "tipo": "Entrada",
+      "SKU": "SKU-001",
+      "Cantidad": 50,
+      "ID_Usuario": 1,
+      "Fecha": "2025-10-30T00:50:23.163Z"
+    },
+    {
+      "id": 2,
+      "tipo": "Entrada",
+      "SKU": "SKU-CHOCO4",
+      "Cantidad": 10,
+      "ID_Usuario": 1,
+      "Fecha": "2025-10-30T00:51:07.431Z"
+    },
+    {
+      "id": 3,
+      "tipo": "Salida",
+      "SKU": "SKU-CHOCO4",
+      "Cantidad": 1,
+      "ID_Usuario": 1,
+      "Fecha": "2025-10-30T00:51:53.974Z"
+    },
+    {
+      "id": 4,
+      "tipo": "Salida",
+      "SKU": "SKU-001",
+      "Cantidad": 2,
+      "ID_Usuario": 3,
+      "Fecha": "2025-10-30T00:52:43.074Z"
+    },
+    {
+      "id": 5,
+      "tipo": "Entrada",
+      "SKU": "SKU-PANBIN",
+      "Cantidad": 15,
+      "ID_Usuario": 1,
+      "Fecha": "2025-10-30T00:54:13.270Z"
+    },
+    {
+      "id": 6,
+      "tipo": "Salida",
+      "SKU": "SKU-CHOCO4",
+      "Cantidad": 1,
+      "ID_Usuario": 3,
+      "Fecha": "2025-10-30T01:20:15.317Z"
+    },
+    {
+      "id": 7,
+      "tipo": "Entrada",
+      "SKU": "SKU-COO6",
+      "Cantidad": 26,
+      "ID_Usuario": 1,
+      "Fecha": "2025-10-30T01:23:38.436Z"
+    },
+    {
+      "id": 8,
+      "tipo": "Salida",
+      "SKU": "SKU-001",
+      "Cantidad": 1,
+      "ID_Usuario": 1,
+      "Fecha": "2025-10-30T01:23:48.649Z"
+    },
+    {
+      "id": 9,
+      "tipo": "Entrada",
+      "SKU": "SKU-JAMFUT",
+      "Cantidad": 15,
+      "ID_Usuario": 3,
+      "Fecha": "2025-10-30T01:24:21.529Z"
+    },
+    {
+      "id": 10,
+      "tipo": "Entrada",
+      "SKU": "SKU-JAMFUT",
+      "Cantidad": 1,
+      "ID_Usuario": 3,
+      "Fecha": "2025-10-30T01:24:34.270Z"
     }
   ]
 }

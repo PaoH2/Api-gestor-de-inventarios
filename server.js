@@ -27,7 +27,7 @@ function readData() {
     return JSON.parse(data);
   } catch (err) {
     console.error("Error al leer la base de datos:", err);
-    return { productos: [], usuarios: [] };
+    return { productos: [], usuarios: [], movimientos: [] };
   }
 }
 
@@ -39,31 +39,44 @@ function writeData(data) {
   }
 }
 
-// --- Middleware de Autenticación JWT ---
+// =======================================================================
+//        Middlewares de Autenticación
+// =======================================================================
+
+/**
+ * Verifica el token JWT en las cabeceras
+ */
 function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
-  if (token == null) return res.sendStatus(401);
+  if (token == null) return res.sendStatus(401); 
 
   jwt.verify(token, SECRET_KEY, (err, user) => {
     if (err) {
       console.log("Token inválido:", err.message);
-      return res.sendStatus(403);
+      return res.sendStatus(403); 
     }
-    req.user = user;
+    req.user = user; 
     next();
   });
 }
 
-// --- Middleware de Verificación de Rol (Superadmin) ---
+/**
+ * Verifica que el rol del usuario sea 'Superadmin'
+ */
 function requireSuperadmin(req, res, next) {
     if (req.user && req.user.role === 'Superadmin') {
-        next();
+        next(); // Continuar si es Superadmin
     } else {
         res.status(403).json({ error: 'Acceso denegado. Se requiere rol de Superadmin.' });
     }
 }
 
+// =======================================================================
+//        Rutas de Autenticación (Públicas)
+// =======================================================================
+
+// --- Ruta de Registro de Usuario (POST) ---
 app.post('/api/register', (req, res) => {
   const { email, password, role } = req.body;
   if (!email || !password) {
@@ -83,6 +96,7 @@ app.post('/api/register', (req, res) => {
   res.status(201).json({ message: 'Usuario registrado exitosamente.' });
 });
 
+// --- Ruta de Inicio de Sesión (POST) ---
 app.post('/api/login', (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) {
@@ -93,25 +107,19 @@ app.post('/api/login', (req, res) => {
   if (!user) {
     return res.status(401).json({ error: 'Credenciales inválidas.' });
   }
-  
-  // Logs de depuración (puedes quitarlos si ya funciona)
-  console.log('Email recibido:', email);
-  console.log('Contraseña recibida (texto plano):', password);
-  console.log('Usuario encontrado en db.json:', user); 
-  console.log('Hash guardado en db.json:', user.password);
-  
   const isPasswordValid = bcrypt.compareSync(password, user.password);
-  console.log('¿La contraseña coincide?:', isPasswordValid); 
-
   if (!isPasswordValid) {
-    console.log('Resultado: Contraseña incorrecta.');
     return res.status(401).json({ error: 'Credenciales inválidas.' });
   }
-  
   const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, SECRET_KEY, { expiresIn: '1h' });
   res.json({ message: 'Inicio de sesión exitoso.', token: token, user: { email: user.email, role: user.role } });
 });
 
+// =======================================================================
+//        Rutas de Productos (Protegidas)
+// =======================================================================
+
+// GET: Obtener todos los productos
 app.get('/api/productos', authenticateToken, (req, res) => {
   const data = readData();
   res.json(data.productos);
@@ -161,6 +169,142 @@ app.put('/api/productos/sku/:sku', authenticateToken, (req, res) => {
   res.json({ message: 'Producto actualizado exitosamente.' });
 });
 
+// =======================================================================
+//        NUEVO: Rutas de Movimientos de Inventario (Protegidas)
+// =======================================================================
+
+// POST: Registrar una Entrada de Inventario
+app.post('/api/movimientos/entrada', authenticateToken, (req, res) => {
+  const { SKU, Cantidad } = req.body;
+  const idUsuario = req.user.id; 
+
+  if (!SKU || !Cantidad || Cantidad <= 0) {
+    return res.status(400).json({ error: 'Se requiere un SKU y una Cantidad positiva.' });
+  }
+
+  const data = readData();
+  const productIndex = data.productos.findIndex(p => p.SKU === SKU);
+
+  if (productIndex === -1) {
+    return res.status(404).json({ error: `Producto con SKU '${SKU}' no encontrado.` });
+  }
+
+  // Actualizar el stock del producto
+  data.productos[productIndex].Stock_Actual += Cantidad;
+
+  // Crear el registro del movimiento
+  const maxMovimientoId = data.movimientos.reduce((max, m) => m.id > max ? m.id : max, 0);
+  const nuevoMovimiento = {
+    id: maxMovimientoId + 1,
+    tipo: 'Entrada',
+    SKU: SKU,
+    Cantidad: Cantidad,
+    ID_Usuario: idUsuario,
+    Fecha: new Date().toISOString()
+  };
+  data.movimientos.push(nuevoMovimiento);
+
+  writeData(data);
+
+  res.status(201).json({ 
+    message: 'Entrada registrada exitosamente.',
+    productoActualizado: data.productos[productIndex]
+  });
+});
+
+// --- NUEVO: Registrar una Salida de Inventario (POST) ---
+app.post('/api/movimientos/salida', authenticateToken, (req, res) => {
+  const { SKU, Cantidad } = req.body;
+  const idUsuario = req.user.id;
+
+  // 1. Validaciones
+  if (!SKU || !Cantidad || Cantidad <= 0) {
+    return res.status(400).json({ error: 'Se requiere un SKU y una Cantidad positiva.' });
+  }
+
+  const data = readData();
+  const productIndex = data.productos.findIndex(p => p.SKU === SKU);
+
+  // 2. Verificar que el producto existe
+  if (productIndex === -1) {
+    return res.status(404).json({ error: `Producto con SKU '${SKU}' no encontrado.` });
+  }
+
+  const producto = data.productos[productIndex];
+
+  // 3. VERIFICACIÓN DE STOCK (la diferencia clave con 'entrada')
+  if (producto.Stock_Actual < Cantidad) {
+    return res.status(400).json({ 
+      error: 'Stock insuficiente.',
+      stockDisponible: producto.Stock_Actual 
+    });
+  }
+
+  // 4. Actualizar el stock
+  data.productos[productIndex].Stock_Actual -= Cantidad;
+
+  // 5. Crear el registro del movimiento
+  const maxMovimientoId = data.movimientos.reduce((max, m) => m.id > max ? m.id : max, 0);
+  const nuevoMovimiento = {
+    id: maxMovimientoId + 1,
+    tipo: 'Salida',
+    SKU: SKU,
+    Cantidad: Cantidad,
+    ID_Usuario: idUsuario,
+    Fecha: new Date().toISOString()
+  };
+  data.movimientos.push(nuevoMovimiento);
+
+  // 6. Guardar cambios
+  writeData(data);
+
+  res.status(201).json({ 
+    message: 'Salida registrada exitosamente.',
+    productoActualizado: data.productos[productIndex]
+  });
+});
+
+app.get('/api/movimientos', authenticateToken, (req, res) => {
+  // 1. Obtenemos los datos del usuario que hace la petición (del token)
+  const { id: userId, role: userRole } = req.user;
+
+  // 2. Leemos la base de datos completa
+  const data = readData();
+  let movimientosARetornar = [];
+
+  // 3. --- LÓGICA DE PERMISOS ---
+  if (userRole === 'Superadmin') {
+    // Si es Superadmin, obtenemos todos los movimientos
+    movimientosARetornar = data.movimientos;
+  } else {
+    // Si es Operador (o cualquier otro rol), filtramos solo sus movimientos
+    movimientosARetornar = data.movimientos.filter(m => m.ID_Usuario === userId);
+  }
+
+  // 4. (Opcional pero recomendado) Enriquecemos los datos
+  //    Añadimos el nombre del producto y el email del usuario a cada movimiento
+  //    para que el frontend no tenga que hacer más peticiones.
+  const enrichedMovements = movimientosARetornar.map(mov => {
+    const producto = data.productos.find(p => p.SKU === mov.SKU);
+    const usuario = data.usuarios.find(u => u.id === mov.ID_Usuario);
+    
+    return {
+      ...mov, // Copia el movimiento (id, tipo, SKU, Cantidad, ID_Usuario, Fecha)
+      Nombre_Producto: producto ? producto.Nombre_Producto : 'Producto Desconocido',
+      Email_Usuario: usuario ? usuario.email : 'Usuario Desconocido'
+    };
+  });
+
+  // 5. Ordenamos por fecha (el más reciente primero) y enviamos
+  enrichedMovements.sort((a, b) => new Date(b.Fecha).getTime() - new Date(a.Fecha).getTime());
+  
+  res.json(enrichedMovements);
+});
+
+// =======================================================================
+//        Rutas de Usuarios (Protegidas y Restringidas a Superadmin)
+// =======================================================================
+
 // GET: Obtener todos los usuarios
 app.get('/api/usuarios', authenticateToken, requireSuperadmin, (req, res) => {
   const data = readData();
@@ -168,50 +312,36 @@ app.get('/api/usuarios', authenticateToken, requireSuperadmin, (req, res) => {
   res.json(usersWithoutPassword);
 });
 
+// GET: Obtener un Usuario por ID
 app.get('/api/usuarios/:id', authenticateToken, requireSuperadmin, (req, res) => {
   const userIdToGet = parseInt(req.params.id, 10);
   const data = readData();
   const user = data.usuarios.find(u => u.id === userIdToGet);
-
   if (!user) {
     return res.status(404).json({ error: 'Usuario no encontrado.' });
   }
-
-  // No enviamos la contraseña
   const { password, ...userWithoutPassword } = user;
   res.json(userWithoutPassword);
 });
 
+// PUT: Actualizar el Rol de un Usuario
 app.put('/api/usuarios/:id', authenticateToken, requireSuperadmin, (req, res) => {
-  const userIdToUpdate = parseInt(req.params.id, 10); // ID del usuario a modificar
-  const requestingUserId = req.user.id; // ID del Superadmin que hace la petición
-  const { role } = req.body; // Nuevo rol enviado en el cuerpo de la petición
-
-  // Validación básica: ¿se envió un rol?
+  const userIdToUpdate = parseInt(req.params.id, 10);
+  const requestingUserId = req.user.id;
+  const { role } = req.body;
   if (!role || (role !== 'Superadmin' && role !== 'Operador')) {
     return res.status(400).json({ error: 'Rol inválido o faltante. Debe ser "Superadmin" u "Operador".' });
   }
-
-  // Impedir que el Superadmin cambie su propio rol (podría bloquearse a sí mismo)
   if (userIdToUpdate === requestingUserId) {
     return res.status(400).json({ error: 'No puedes modificar tu propio rol.' });
   }
-
   const data = readData();
   const userIndex = data.usuarios.findIndex(user => user.id === userIdToUpdate);
-
-  // Verificar si el usuario a modificar existe
   if (userIndex === -1) {
     return res.status(404).json({ error: 'Usuario no encontrado.' });
   }
-
-  // Actualizar el rol del usuario encontrado
   data.usuarios[userIndex].role = role;
-
-  // Guardar los cambios en el archivo db.json
   writeData(data);
-
-  // Devolver solo los datos actualizados (sin contraseña)
   const { password, ...updatedUser } = data.usuarios[userIndex];
   res.json({ message: 'Rol de usuario actualizado exitosamente.', user: updatedUser });
 });
@@ -220,23 +350,18 @@ app.put('/api/usuarios/:id', authenticateToken, requireSuperadmin, (req, res) =>
 app.delete('/api/usuarios/:id', authenticateToken, requireSuperadmin, (req, res) => {
   const userIdToDelete = parseInt(req.params.id, 10);
   const requestingUserId = req.user.id; 
-
   if (userIdToDelete === requestingUserId) {
     return res.status(400).json({ error: 'No puedes eliminar tu propia cuenta.' });
   }
-
   const data = readData();
   const initialLength = data.usuarios.length;
   data.usuarios = data.usuarios.filter(user => user.id !== userIdToDelete);
-
   if (data.usuarios.length === initialLength) {
     return res.status(404).json({ error: 'Usuario no encontrado.' });
   }
-
   writeData(data);
   res.json({ message: 'Usuario eliminado exitosamente.' });
 });
-
 
 // --- Iniciar el Servidor ---
 app.listen(PORT, () => {
